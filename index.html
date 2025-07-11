@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistente de Meta - Builds com IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        /* --- Configuração da Fonte e Fundo Futurista --- */
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background-color: #010409; /* Cor de fundo principal, um preto profundo */
+            overflow-x: hidden; /* Evita a barra de rolagem horizontal */
+        }
+
+        /* Animação de grade no fundo */
+        body::before {
+            content: '';
+            position: fixed; /* Mudei para fixed para não rolar com o conteúdo */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(to right, #0dffff1a 1px, transparent 1px),
+                linear-gradient(to bottom, #0dffff1a 1px, transparent 1px);
+            background-size: 40px 40px;
+            animation: moveGrid 20s linear infinite;
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        @keyframes moveGrid {
+            from { background-position: 0 0; }
+            to { background-position: 400px 400px; }
+        }
+
+        /* --- NOVOS ESTILOS PARA AS BARRAS LATERAIS --- */
+        .side-panel {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            width: 100px; /* Largura das barras laterais */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px 0;
+            z-index: 10;
+            pointer-events: none; /* Impede que as barras interfiram com o mouse */
+        }
+        .left-panel { left: 20px; }
+        .right-panel { right: 20px; }
+
+        .panel-line {
+            width: 2px;
+            height: 100px;
+            background-color: #0dffff;
+            margin: 15px 0;
+            box-shadow: 0 0 5px #0dffff;
+            opacity: 0.5;
+            animation: pulse-line 3s ease-in-out infinite;
+        }
+        
+        /* Animação para as linhas pulsarem */
+        @keyframes pulse-line {
+            0%, 100% { opacity: 0.3; transform: scaleY(1); }
+            50% { opacity: 0.8; transform: scaleY(1.05); }
+        }
+
+        /* Atrasos diferentes para cada linha */
+        .panel-line:nth-child(2) { animation-delay: 0.5s; height: 60px; }
+        .panel-line:nth-child(3) { animation-delay: 1s; height: 120px; }
+
+        /* --- Estilos de HUD (Heads-Up Display) com Clip-Path --- */
+        .hud-border {
+            clip-path: polygon(0 15px, 15px 0, calc(100% - 15px) 0, 100% 15px, 100% calc(100% - 15px), calc(100% - 15px) 100%, 15px 100%, 0 calc(100% - 15px));
+            background-color: rgba(10, 23, 36, 0.85);
+            backdrop-filter: blur(5px);
+            border: 1px solid #0dffff;
+            box-shadow: 0 0 15px #0dffff, inset 0 0 15px #0dffff33;
+        }
+        
+        .hud-input {
+            clip-path: polygon(0 8px, 8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%);
+            border: 1px solid #4A5568;
+            transition: all 0.3s ease;
+        }
+        .hud-input:focus {
+            outline: none;
+            border-color: #0dffff;
+            box-shadow: 0 0 10px #0dffff;
+        }
+        
+        .neon-text {
+            color: #E5E7EB;
+            text-shadow: 0 0 5px #0dffff, 0 0 10px #0dffff;
+        }
+
+        .hud-button {
+            background-color: #0dffff;
+            color: #010409;
+            clip-path: polygon(0 10px, 10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+            transition: all 0.3s ease;
+            font-weight: bold;
+            border: none;
+        }
+        .hud-button:hover {
+            box-shadow: 0 0 20px #0dffff, 0 0 30px #a855f7;
+            transform: translateY(-2px);
+            background-color: #9effff;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { filter: drop-shadow(0 0 3px #a855f7); }
+            50% { filter: drop-shadow(0 0 10px #ec4899); }
+        }
+        .logo-animated {
+            animation: pulse-glow 4s ease-in-out infinite;
+        }
+
+        .result-container::-webkit-scrollbar { width: 8px; }
+        .result-container::-webkit-scrollbar-track { background: #010409; }
+        .result-container::-webkit-scrollbar-thumb {
+            background-color: #0dffff;
+            border-radius: 20px;
+            box-shadow: 0 0 5px #0dffff;
+        }
+        
+        .prose {
+             --tw-prose-body: #d1d5db; --tw-prose-headings: #0dffff; --tw-prose-lead: #a1a1aa;
+             --tw-prose-links: #a855f7; --tw-prose-bold: #fff; --tw-prose-counters: #a1a1aa;
+             --tw-prose-bullets: #0dffff; --tw-prose-hr: #374151; --tw-prose-quotes: #f3f4f6;
+             --tw-prose-quote-borders: #0dffff; --tw-prose-captions: #a1a1aa; --tw-prose-code: #f0abfc;
+             --tw-prose-pre-code: #d1d5db; --tw-prose-pre-bg: #010409; --tw-prose-th-borders: #374151;
+             --tw-prose-td-borders: #374151;
+        }
+    </style>
+</head>
+<body class="text-gray-200 flex flex-col items-center min-h-screen p-4">
+
+    <div class="side-panel left-panel hidden md:flex">
+        <div class="panel-line"></div>
+        <div class="panel-line"></div>
+        <div class="panel-line"></div>
+    </div>
+
+    <div class="side-panel right-panel hidden md:flex">
+        <div class="panel-line"></div>
+        <div class="panel-line"></div>
+        <div class="panel-line"></div>
+    </div>
+
+    <header class="my-8 z-20">
+        <div class="text-center logo-animated">
+            <svg width="250" height="80" viewBox="0 0 250 80" class="mx-auto">
+                <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#4f46e5" />
+                        <stop offset="50%" style="stop-color:#a855f7" />
+                        <stop offset="100%" style="stop-color:#ec4899" />
+                    </linearGradient>
+                </defs>
+                <path d="M50 10 L10 30 L10 50 L50 70 L125 70 L150 50 L150 30 L125 10 Z" fill="none" stroke="url(#logoGradient)" stroke-width="3"/>
+                <path d="M100 10 L150 10 L175 30 L175 50 L150 70 L100 70 L75 50 L75 30 Z" fill="none" stroke="url(#logoGradient)" stroke-width="2" opacity="0.6"/>
+                <text x="82.5" y="42" font-family="Orbitron, sans-serif" font-size="16" font-weight="bold" fill="#E5E7EB" text-anchor="middle">XANTARES</text>
+                <text x="82.5" y="62" font-family="Orbitron, sans-serif" font-size="12" fill="url(#logoGradient)" text-anchor="middle">&lt;build&gt;</text>
+            </svg>
+        </div>
+    </header>
+
+    <main class="w-full max-w-2xl mx-auto z-20">
+        <div class="hud-border p-6 sm:p-8">
+            <h1 class="text-3xl font-bold text-center neon-text tracking-wider">ASSISTENTE DE META</h1>
+            <p class="text-center text-purple-300 mt-2 mb-6">Pergunte sobre estratégias, builds e dicas para seus jogos!</p>
+
+            <form id="build-form" class="space-y-6">
+                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                        <label for="api-key" class="sr-only">API Key do Gemini</label>
+                        <input type="password" id="api-key" placeholder="API KEY DO GEMINI" class="hud-input w-full bg-gray-900 text-gray-300 px-4 py-3">
+                        <p class="text-xs text-gray-500 mt-2 px-1">Sua chave é salva localmente.</p>
+                    </div>
+                    <div>
+                        <label for="game-select" class="sr-only">Selecione um jogo</label>
+                        <select id="game-select" class="hud-input w-full bg-gray-900 text-gray-300 px-4 py-3 appearance-none" required>
+                             <option value="League of Legends">League of Legends</option>
+                             <option value="Dota 2">Dota 2</option>
+                             <option value="Valorant">Valorant</option>
+                             <option value="Overwatch 2">Overwatch 2</option>
+                             <option value="Baldur's Gate 3">Baldur's Gate 3</option>
+                             <option value="Outro">Outro Jogo</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label for="query-input" class="sr-only">Sua pergunta</label>
+                    <input type="text" id="query-input" placeholder="Ex: Melhor build para Jinx ADC" class="hud-input w-full bg-gray-900 text-gray-300 px-4 py-3" required>
+                </div>
+                <button type="submit" id="submit-button" class="w-full py-3 px-4 flex items-center justify-center hud-button">
+                    <span id="button-text">GERAR BUILD</span>
+                    <svg id="button-spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-black hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </button>
+            </form>
+        </div>
+
+        <div id="result-container" class="mt-8 w-full max-w-2xl mx-auto hud-border p-6 sm:p-8 prose max-w-none hidden overflow-y-auto" style="max-height: 50vh;">
+            </div>
+        
+        <div id="error-box" class="mt-6 w-full max-w-2xl mx-auto bg-red-900/50 border border-red-500 text-red-300 px-4 py-3 relative hidden hud-border" style="--tw-prose-quote-borders: #ef4444;" role="alert">
+            <strong class="font-bold">ERRO DE TRANSMISSÃO!</strong>
+            <span id="error-message" class="block sm:inline"></span>
+        </div>
+    </main>
+
+    <script>
+        // --- DOM Element References ---
+        const buildForm = document.getElementById('build-form');
+        const apiKeyInput = document.getElementById('api-key');
+        const gameSelect = document.getElementById('game-select');
+        const queryInput = document.getElementById('query-input');
+        const submitButton = document.getElementById('submit-button');
+        const buttonText = document.getElementById('button-text');
+        const buttonSpinner = document.getElementById('button-spinner');
+        const resultContainer = document.getElementById('result-container');
+        const errorBox = document.getElementById('error-box');
+        const errorMessage = document.getElementById('error-message');
+        
+        // --- Initial Setup on Page Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadApiKey();
+        });
+
+        function loadApiKey() {
+            const savedKey = localStorage.getItem('gemini-api-key');
+            if (savedKey) { apiKeyInput.value = savedKey; }
+        }
+
+        function saveApiKey(key) {
+            try { localStorage.setItem('gemini-api-key', key); } 
+            catch (e) { console.error("Failed to save API key.", e); }
+        }
+
+        buildForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const apiKey = apiKeyInput.value.trim();
+            const game = gameSelect.value;
+            const query = queryInput.value.trim();
+
+            if (!apiKey || !game || !query) {
+                showError("Por favor, preencha todos os campos.");
+                return;
+            }
+            saveApiKey(apiKey);
+            setLoading(true);
+            hideError();
+            resultContainer.classList.add('hidden');
+            resultContainer.innerHTML = '';
+
+            const prompt = `Como um especialista no jogo ${game}, forneça uma análise detalhada e uma sugestão de build para o seguinte pedido: "${query}". Sua resposta deve ser bem estruturada para um jogador. Inclua, se aplicável: - **Itens Principais (Core Items):** A sequência de itens essenciais. - **Runas/Habilidades:** As melhores escolhas. - **Estratégia de Jogo:** Dicas de como se comportar no início, meio e fim de jogo. - **Combos:** Sequências de habilidades importantes. - **Alternativas:** Itens situacionais. Formate sua resposta usando Markdown para fácil leitura (títulos, listas, negrito).`;
+
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+                const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                if (result.candidates && result.candidates[0].content.parts[0].text) {
+                    resultContainer.innerHTML = marked.parse(result.candidates[0].content.parts[0].text);
+                    resultContainer.classList.remove('hidden');
+                } else {
+                    throw new Error("A API não retornou um resultado válido.");
+                }
+            } catch (error) {
+                console.error("API Call Failed:", error);
+                showError(`Falha na comunicação com a API. Detalhe: ${error.message}`);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        function setLoading(isLoading) {
+            submitButton.disabled = isLoading;
+            buttonText.classList.toggle('hidden', isLoading);
+            buttonSpinner.classList.toggle('hidden', !isLoading);
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorBox.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorBox.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
